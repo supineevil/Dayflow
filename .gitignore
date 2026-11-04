@@ -1,0 +1,11 @@
+node_modules
+dist
+
+# Secrets and signing material: never commit these
+.keys
+.env.local
+.env.*.local
+
+# OS / editor noise
+.DS_Store
+*.log
