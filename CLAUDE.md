@@ -26,14 +26,14 @@ Chrome MV3 extension: a calendar and task dashboard on top of Google Calendar. L
 
 ## Features built
 
-- Today (Tasks section on top, timeline, time zone planner), Agenda, response (RSVP) filter.
+- Today (Tasks section on top, Next up card, timeline, time zone planner, day stepping), Agenda, response (RSVP) filter. Declined events are excluded from Next up and busy time; unanswered invites are yellow.
 - Hide events: by title, sender/organizer (email or `@domain`), calendar, declined, past; hide one instance or a whole series.
 - Meet: quick Google Meet with attendees (chip email input, Enter adds one), multiple time zones written into the invite, warns outside working hours.
 - Edit / cancel / RSVP on events you own or are invited to (these send real emails; tests used pure helpers only).
 - Time zone slider: GMT offsets, DST via Intl, turns green inside the user's working hours (overnight hours supported).
 - Header greeting depends on the working hours set in Settings (not the system clock).
-- Popup has a refresh button.
-- Links tab (bookmarks): sections with colours, labelled colour-coded links, search, edit/delete, drag-and-drop for links (reorder / move between sections) and sections, up/down buttons as a keyboard route, export/import JSON (merge or replace; unsafe URLs dropped, only http/https allowed).
+- Popup has a Day/Links switch (`PopupLinks`: search, fold sections, open links; adding/editing stays in the side panel), a refresh button and previous/next/Today day stepping (`DayStepper`, `dayAgenda`). Next up skips declined events (`nextEvent.ts`); invites you have not answered are highlighted yellow.
+- Links tab (bookmarks): sections with colours, labelled colour-coded links, collapsible sections (state in `dayflow:bookmarks-ui`, logic in `collapse.ts`, deliberately not exported), search, edit/delete, drag-and-drop for links (reorder / move between sections) and sections, up/down buttons as a keyboard route, export/import JSON (merge or replace; unsafe URLs dropped, only http/https allowed).
 - Tab bar scrolls sideways and the tabs can be reordered by drag or from Settings → Tab order (`prefs.tabOrder`, logic in `src/core/nav/tabOrder.ts`).
 
 ## Not verified against real Google or a browser

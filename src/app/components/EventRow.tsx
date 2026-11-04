@@ -9,6 +9,7 @@ import { usePrefs } from '@/app/hooks/usePrefs';
 import { useZones } from '@/app/hooks/useZones';
 import { cn } from '@/app/lib/cn';
 import { formatDuration, formatTime } from '@/app/lib/format';
+import { needsReply } from '@/core/planning/nextEvent';
 import { EventActions } from './EventActions';
 import { ResponseBadge } from './ResponseBadge';
 
@@ -31,12 +32,13 @@ export function EventRow({ event, now, onCompare, showActions = true }: Props) {
   const isPast = end <= now;
   const isNow = start <= now && now < end;
   const declined = event.selfResponse === 'declined';
+  const unanswered = needsReply(event);
   const sender = senderOf(event);
   // Every row expands, because the hide actions live in the expanded panel.
   const hasDetails = true;
 
   return (
-    <div className={cn('rounded-md', isNow && 'bg-accent-soft')}>
+    <div className={cn('rounded-md', isNow && !unanswered && 'bg-accent-soft', unanswered && !isPast && 'bg-warning/10 ring-1 ring-warning/40')}>
       <button
         type="button"
         aria-expanded={hasDetails ? open : undefined}

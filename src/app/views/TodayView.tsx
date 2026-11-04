@@ -1,5 +1,4 @@
-import { addDays, differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { differenceInMinutes, format, isSameDay, startOfDay } from 'date-fns';
 import { useMemo, useState } from 'react';
 import type { CalendarEvent } from '@/core/models';
 import { eventsOnDay } from '@/core/time/eventTime';
@@ -9,12 +8,13 @@ import { usePrefs } from '@/app/hooks/usePrefs';
 import { useZones } from '@/app/hooks/useZones';
 import { useTasks } from '@/app/hooks/useTasks';
 import { AllDayStrip } from '@/app/components/AllDayStrip';
+import { DayStepper } from '@/app/components/DayStepper';
 import { DayStatsBar } from '@/app/components/DayStatsBar';
-import { NextEventCard, pickNextEvent } from '@/app/components/NextEventCard';
+import { NextEventCard } from '@/app/components/NextEventCard';
+import { pickNextEvent } from '@/core/planning/nextEvent';
 import { TaskList } from '@/app/components/TaskList';
 import { TimezonePlanner } from '@/app/components/TimezonePlanner';
 import { Timeline } from '@/app/components/Timeline';
-import { Button, IconButton } from '@/app/components/ui/Button';
 
 interface Props {
   events: CalendarEvent[];
@@ -67,17 +67,7 @@ export function TodayView({ events, now, day, onDayChange }: Props) {
           <h1 className="text-base font-semibold">{isToday ? 'Today' : format(day, 'EEEE')}</h1>
           <p className="text-xs text-muted">{format(day, 'EEEE, d MMMM yyyy')}</p>
         </div>
-        <div className="flex items-center gap-0.5">
-          <IconButton label="Previous day" onClick={() => onDayChange(addDays(day, -1))}>
-            <ChevronLeft className="size-4" />
-          </IconButton>
-          <Button size="sm" variant="ghost" disabled={isToday} onClick={() => onDayChange(startOfDay(now))}>
-            Today
-          </Button>
-          <IconButton label="Next day" onClick={() => onDayChange(addDays(day, 1))}>
-            <ChevronRight className="size-4" />
-          </IconButton>
-        </div>
+        <DayStepper day={day} now={now} onChange={onDayChange} />
       </div>
 
       <DayStatsBar stats={stats} taskCount={openTaskCount} />

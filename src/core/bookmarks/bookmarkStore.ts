@@ -3,6 +3,7 @@ import {
   withoutBookmark, withoutSection, withBookmarkMoved, withBookmarkNudged, withSectionReordered,
   type Bookmark, type BookmarkColour, type BookmarkSection, type BookmarkState, type MergeResult,
 } from './bookmarks';
+import { expandOne, toggleAll, toggleCollapsed } from './collapse';
 import { createStore } from '@/core/storage/store';
 
 const EMPTY: BookmarkState = { sections: [], bookmarks: [] };
@@ -25,7 +26,10 @@ export function updateSection(id: string, patch: Partial<Omit<BookmarkSection, '
   bookmarkStore.update((s) => withSectionPatch(s, id, name ? { ...patch, name } : patch));
 }
 
-export const deleteSection = (id: string) => bookmarkStore.update((s) => withoutSection(s, id));
+export function deleteSection(id: string): void {
+  bookmarkStore.update((s) => withoutSection(s, id));
+  bookmarkUiStore.update((u) => (u.collapsed.includes(id) ? { collapsed: expandOne(u.collapsed, id) } : u));
+}
 export const moveSection = (id: string, delta: -1 | 1) => bookmarkStore.update((s) => withSectionMoved(s, id, delta));
 
 export interface NewBookmark {
@@ -82,3 +86,17 @@ export const moveBookmarkTo = (id: string, sectionId: string | null, beforeId: s
   bookmarkStore.update((s) => withBookmarkMoved(s, id, sectionId, beforeId));
 export const nudgeBookmark = (id: string, delta: -1 | 1) => bookmarkStore.update((s) => withBookmarkNudged(s, id, delta));
 export const reorderSection = (id: string, targetId: string) => bookmarkStore.update((s) => withSectionReordered(s, id, targetId));
+
+// ---- which sections are folded away (a view preference, so it is not exported or merged) ----
+
+interface BookmarkUi {
+  collapsed: string[];
+}
+
+export const bookmarkUiStore = createStore<BookmarkUi>('dayflow:bookmarks-ui', { collapsed: [] }, (stored) => ({
+  collapsed: [...new Set(Array.isArray(stored.collapsed) ? stored.collapsed : [])].filter((x): x is string => typeof x === 'string'),
+}));
+
+export const toggleSectionCollapsed = (id: string) => bookmarkUiStore.update((u) => ({ collapsed: toggleCollapsed(u.collapsed, id) }));
+export const expandSection = (id: string) => bookmarkUiStore.update((u) => (u.collapsed.includes(id) ? { collapsed: expandOne(u.collapsed, id) } : u));
+export const toggleAllSections = (ids: string[]) => bookmarkUiStore.update((u) => ({ collapsed: toggleAll(u.collapsed, ids) }));

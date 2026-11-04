@@ -1,13 +1,14 @@
-import { ArrowDown, ArrowUp, Bookmark as BookmarkIcon, FolderPlus, GripVertical, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bookmark as BookmarkIcon, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, FolderPlus, GripVertical, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useState, type DragEvent, type FormEvent } from 'react';
 import {
-  addBookmark, addSection, deleteBookmark, deleteSection, moveBookmarkTo, moveSection, nudgeBookmark, reorderSection, updateBookmark, updateSection,
+  addBookmark, addSection, deleteBookmark, deleteSection, moveBookmarkTo, moveSection, nudgeBookmark, reorderSection, toggleAllSections, toggleSectionCollapsed, expandSection, updateBookmark, updateSection,
 } from '@/core/bookmarks/bookmarkStore';
+import { LOOSE_GROUP, isCollapsed } from '@/core/bookmarks/collapse';
 import {
   colourHex, groupBookmarks, hostOf, searchBookmarks,
   type Bookmark, type BookmarkColour, type BookmarkSection,
 } from '@/core/bookmarks/bookmarks';
-import { useBookmarks } from '@/app/hooks/useBookmarks';
+import { useBookmarks, useCollapsedSections } from '@/app/hooks/useBookmarks';
 import { Button, IconButton } from '@/app/components/ui/Button';
 import { BookmarkBackup } from '@/app/components/BookmarkBackup';
 import { ColourPicker } from '@/app/components/ColourPicker';
@@ -163,6 +164,7 @@ type Drag = { kind: 'bookmark' | 'section'; id: string };
 
 export function BookmarksView() {
   const state = useBookmarks();
+  const collapsed = useCollapsedSections();
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState<{ sectionId: string | null } | null>(null);
   const [addingSection, setAddingSection] = useState(false);
@@ -177,6 +179,8 @@ export function BookmarksView() {
   const results = searching ? searchBookmarks(state, query) : [];
   const groups = groupBookmarks(state);
   const empty = state.bookmarks.length === 0 && state.sections.length === 0;
+  const groupIds = groups.map((g) => g.section?.id ?? LOOSE_GROUP);
+  const allCollapsed = groupIds.length > 0 && groupIds.every((id) => isCollapsed(collapsed, id));
 
   const endDrag = () => {
     setDrag(null);
@@ -232,6 +236,11 @@ export function BookmarksView() {
             </button>
           )}
         </div>
+        {!searching && groups.length > 1 && (
+          <IconButton label={allCollapsed ? 'Expand all sections' : 'Collapse all sections'} onClick={() => toggleAllSections(groupIds)}>
+            {allCollapsed ? <ChevronsUpDown className="size-4" /> : <ChevronsDownUp className="size-4" />}
+          </IconButton>
+        )}
         <IconButton label="New section" onClick={() => { setAddingSection(true); setAdding(null); }}><FolderPlus className="size-4" /></IconButton>
         <IconButton label="Add bookmark" onClick={() => { setAdding({ sectionId: null }); setAddingSection(false); }}><Plus className="size-4" /></IconButton>
       </div>
@@ -255,7 +264,9 @@ export function BookmarksView() {
         )
       ) : (
         groups.map(({ section, bookmarks }) => {
-          const key = section?.id ?? 'loose';
+          const key = section?.id ?? LOOSE_GROUP;
+          const folded = isCollapsed(collapsed, key);
+          const listId = `bookmarks-${key}`;
           const index = section ? state.sections.findIndex((s) => s.id === section.id) : -1;
           return (
             <section
@@ -294,8 +305,18 @@ export function BookmarksView() {
                 >
                   {section && <GripVertical aria-hidden className="size-3.5 shrink-0 cursor-grab text-subtle" />}
                   <span aria-hidden className="size-2.5 rounded-full" style={{ backgroundColor: section ? colourHex(section.colour) : 'var(--fg-subtle)' }} />
-                  <h2 className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide text-muted">
-                    {section?.name ?? 'No section'} <span className="font-normal text-subtle">{bookmarks.length}</span>
+                  <h2 className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                    <button
+                      type="button"
+                      aria-expanded={!folded}
+                      aria-controls={listId}
+                      onClick={() => toggleSectionCollapsed(key)}
+                      className="flex w-full min-w-0 items-center gap-1 rounded py-1 text-left uppercase hover:text-fg"
+                    >
+                      {folded ? <ChevronRight aria-hidden className="size-3.5 shrink-0" /> : <ChevronDown aria-hidden className="size-3.5 shrink-0" />}
+                      <span className="truncate">{section?.name ?? 'No section'}</span>
+                      <span className="font-normal normal-case text-subtle">{bookmarks.length}</span>
+                    </button>
                   </h2>
                   {section && confirmDelete === section.id ? (
                     <>
@@ -305,7 +326,7 @@ export function BookmarksView() {
                     </>
                   ) : (
                     <>
-                      <IconButton label={`Add to ${section?.name ?? 'no section'}`} onClick={() => { setAdding({ sectionId: section?.id ?? null }); setAddingSection(false); }}>
+                      <IconButton label={`Add to ${section?.name ?? 'no section'}`} onClick={() => { expandSection(key); setAdding({ sectionId: section?.id ?? null }); setAddingSection(false); }}>
                         <Plus className="size-3.5" />
                       </IconButton>
                       {section && (
@@ -320,11 +341,13 @@ export function BookmarksView() {
                   )}
                 </div>
               )}
-              {bookmarks.length === 0 ? (
-                <p className="px-2 py-1 text-xs text-subtle">Empty. Use + to add a page here.</p>
-              ) : (
-                <ul className="space-y-0.5">{renderRows(bookmarks, section?.id ?? null, true)}</ul>
-              )}
+              <div id={listId} hidden={folded}>
+                {bookmarks.length === 0 ? (
+                  <p className="px-2 py-1 text-xs text-subtle">Empty. Use + to add a page here.</p>
+                ) : (
+                  <ul className="space-y-0.5">{renderRows(bookmarks, section?.id ?? null, true)}</ul>
+                )}
+              </div>
             </section>
           );
         })

@@ -9,10 +9,15 @@ Dayflow is **local-first**. Your tasks, bookmarks and settings are stored only i
 ## Features
 
 **Calendar**
-- **Today**: tasks on top, then a timeline of today's events and free time within your working hours.
+- **Today**: your tasks on top, a "Next up" card, then a timeline of the day's events and free time within your working hours. Step to the previous or next day, or jump back to today.
 - **Agenda**: upcoming events grouped by day.
-- Filter by your response (accepted, maybe, declined, not answered).
+- **Built around your replies:** events you declined never show as "Next up" and don't count as busy time. Invites you haven't answered are highlighted in yellow, so they are hard to miss.
+- Filter the lists by your response (accepted, maybe, declined, not answered).
 - Works offline from a local cache, with incremental sync in the background.
+
+**Tasks**
+- A simple to-do list on the Today tab: add a task, tick it off, delete it. Overdue tasks are flagged in red.
+- Tasks are local only. They are never written to Google Calendar.
 
 **Hide the noise**
 - Hide a single event, a whole recurring series, or everything from a sender (an email or `@domain`).
@@ -24,15 +29,20 @@ Dayflow is **local-first**. Your tasks, bookmarks and settings are stored only i
 - Edit, cancel or respond (RSVP) to events from the event list.
 
 **Links (bookmarks)**
-- Save web pages in your own sections. Every link has a label and a colour.
+- Save web pages in your own sections. Every link has a label and a colour. Sections fold away with one click (and remember it), so only the ones you need are open.
 - Drag and drop to reorder links, move them between sections, and reorder sections. Up/down buttons do the same from the keyboard.
 - Search, and export/import as a JSON file to move bookmarks to another device (merge or replace).
 
+**Toolbar popup**
+Click the toolbar icon for a small window with two parts, switched at the top:
+- **Day**: your next event (never one you declined, with unanswered invites in yellow), then the rest of today. Use the arrows to check any other day, and **Today** to come back. It has a refresh button and a button to open the side panel.
+- **Links**: your bookmarks, grouped and colour-coded as in the side panel. Search, fold sections, and click to open. Adding and editing stay in the side panel.
+
 **Make it yours**
-- Drag the top-bar tabs to reorder them, or use Settings → Tab order.
+- Drag the top-bar tabs (Today, Agenda, Meet, Links, Settings) to reorder them, or use Settings → Tab order. The bar scrolls sideways when it is narrow.
 - Light, dark or system theme; working hours; week start; extra time zones.
 - The header greeting follows your working hours, not the system clock.
-- A small popup shows your next event, and the same app is available as a full-page options screen.
+- The same app is also available as a full-page options screen.
 
 ## Install
 
@@ -84,7 +94,7 @@ Sign-in uses the OAuth implicit flow, so there are no refresh tokens: the token 
 | Tasks, bookmarks, settings | `chrome.storage.local` in your browser |
 | Sign-in token | `chrome.storage.session` (cleared when the browser closes) |
 
-Uninstalling the extension deletes all of it. Export your bookmarks first (Links → Backup &amp; transfer) if you want to keep them. Tasks and settings are not included in that export.
+Uninstalling the extension deletes all of it. Export your bookmarks first (Links → Backup &amp; transfer) if you want to keep them. Tasks and settings are not included in that export, and neither is which sections are folded.
 
 ## Development
 
@@ -120,13 +130,14 @@ If you fork this project, generate your own key (and ID), update the manifest, a
 
 ## Known limitations
 
-- **Not yet verified against a real Google account or in a live browser:** Meet creation, editing, cancelling and RSVP (these send real invitation emails; test with a throwaway meeting first), the popup's "Open side panel" button, narrow-width layout, and all drag-and-drop interactions. Typecheck, build and the unit tests pass.
+- **Not yet verified against a real Google account or in a live browser:** Meet creation, editing, cancelling and RSVP (these send real invitation emails; test with a throwaway meeting first), the popup's "Open side panel" button, the popup's Day and Links views, narrow-width layout, and all drag-and-drop interactions. Typecheck, build and the unit tests pass.
 - Sign-in lasts about an hour per token; expect an occasional Reconnect. In Testing mode you must also reconnect about weekly.
 - Workspace accounts may be blocked by your organisation's admin policy for third-party apps.
 - Only a window of 30 days back and 120 days forward is synced.
 - Bookmarks do not sync between devices on their own; use export and import.
-- Drag and drop does not work on touch screens (the arrow buttons do).
-- Not built yet: Week and Month views, editing task details (due date, priority, estimate, time blocks), keyboard shortcuts and an accessibility pass.
+- Drag and drop does not work on touch screens (the arrow buttons do). Dragging is turned off while searching bookmarks.
+- The popup shows bookmarks and days but cannot add or edit them; use the side panel for that.
+- Not built yet: Week and Month views, editing a task after it is created (due date, priority, estimate, time blocks), keyboard shortcuts and an accessibility pass.
 
 ## License
 

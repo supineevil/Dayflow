@@ -1,15 +1,22 @@
-import { format, startOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay } from 'date-fns';
+import { useState } from 'react';
 import { Loader2, PanelRight, RefreshCw, Settings } from 'lucide-react';
+import { AllDayStrip } from '@/app/components/AllDayStrip';
 import { ConnectCard } from '@/app/components/ConnectCard';
+import { PopupLinks } from '@/app/components/PopupLinks';
+import { Segmented } from '@/app/components/ui/Segmented';
+import { DayStepper } from '@/app/components/DayStepper';
 import { EventRow } from '@/app/components/EventRow';
-import { NextEventCard, pickNextEvent } from '@/app/components/NextEventCard';
+import { NextEventCard } from '@/app/components/NextEventCard';
 import { Button, IconButton } from '@/app/components/ui/Button';
 import { useCalendarData } from '@/app/hooks/useCalendarData';
 import { useNow } from '@/app/hooks/useNow';
 import { usePrefs } from '@/app/hooks/usePrefs';
 import { useTheme } from '@/app/hooks/useTheme';
+import { dayAgenda } from '@/core/planning/dayAgenda';
 import { greeting } from '@/core/planning/greeting';
-import { eventEnd, eventsOnDay } from '@/core/time/eventTime';
+import { pickNextEvent, upcomingAttending } from '@/core/planning/nextEvent';
+import { eventsOnDay } from '@/core/time/eventTime';
 
 async function openSidePanel() {
   // sidePanel.open() requires a user gesture. The only await before it is a fast local lookup of the
@@ -26,15 +33,19 @@ export function Popup() {
   const { prefs } = usePrefs();
   const { filtered, loading, account, syncError, syncing, refresh } = useCalendarData(now);
 
+  const [tab, setTab] = useState<'day' | 'links'>('day');
+  const [picked, setPicked] = useState(() => startOfDay(now));
+  const isToday = isSameDay(picked, now);
   const today = eventsOnDay(filtered.visible, startOfDay(now));
-  const remaining = today.filter((e) => !e.isAllDay && eventEnd(e) > now).slice(0, 4);
+  // Events you declined don't belong in a bar meant to show what's coming up for you.
+  const remaining = upcomingAttending(today, now).slice(0, 4);
+  const other = dayAgenda(filtered.visible, picked);
 
   return (
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold">{greeting(now, prefs.workingHours)}</div>
-          <div className="text-xs text-muted">{format(now, 'EEEE, d MMMM')}</div>
         </div>
         <div className="flex items-center gap-0.5">
           {account.signedIn && (
@@ -48,6 +59,28 @@ export function Popup() {
         </div>
       </div>
 
+      <Segmented
+        label="Popup section"
+        className="mb-2 w-full [&>button]:flex-1"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'day', label: 'Day' },
+          { value: 'links', label: 'Links' },
+        ]}
+      />
+
+      {tab === 'links' ? (
+        <PopupLinks onOpenFull={() => void openSidePanel()} />
+      ) : (
+        <>
+      {account.signedIn && (
+        <div className="-mt-1 mb-2 flex items-center justify-between">
+          <div className="text-xs text-muted">{format(picked, 'EEEE, d MMMM')}</div>
+          <DayStepper day={picked} now={now} onChange={setPicked} />
+        </div>
+      )}
+
       {!account.signedIn ? (
         // Google's sign-in window would close the popup mid-flow, so connecting happens in the side panel.
         <ConnectCard onConnect={() => undefined} busy={false} error={null} canSignInHere={false} onOpenFull={() => void openSidePanel()} />
@@ -56,16 +89,36 @@ export function Popup() {
       ) : (
         <div className="space-y-3">
           {syncError && <p className="text-xs text-warning">{syncError.code === 'expired' ? 'Sign-in expired. Open Dayflow to reconnect.' : 'Showing your last synced events.'}</p>}
-          <NextEventCard event={pickNextEvent(today, now)} now={now} />
-          {remaining.length > 1 && (
+          {isToday ? (
+            <>
+              <NextEventCard event={pickNextEvent(today, now)} now={now} />
+              {remaining.length > 1 && (
+                <div>
+                  <h2 className="mb-1 px-2 text-[11px] font-medium uppercase tracking-wide text-subtle">Later today</h2>
+                  {remaining.slice(1).map((e) => (
+                    <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} showActions={false} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
             <div>
-              <h2 className="mb-1 px-2 text-[11px] font-medium uppercase tracking-wide text-subtle">Later today</h2>
-              {remaining.slice(1).map((e) => (
-                <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} showActions={false} />
-              ))}
+              <AllDayStrip events={other.allDay} />
+              {other.timed.length === 0 ? (
+                <p className="rounded-lg border border-border bg-surface p-3 text-[13px] text-muted">Nothing scheduled this day.</p>
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {other.timed.map((e) => (
+                    <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} showActions={false} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
+      )}
+
+        </>
       )}
 
       {account.signedIn && (

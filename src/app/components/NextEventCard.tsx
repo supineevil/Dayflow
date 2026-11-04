@@ -1,14 +1,9 @@
 import { Video } from 'lucide-react';
 import type { CalendarEvent } from '@/core/models';
+import { needsReply } from '@/core/planning/nextEvent';
 import { eventEnd, eventStart } from '@/core/time/eventTime';
+import { cn } from '@/app/lib/cn';
 import { countdown, formatRange } from '@/app/lib/format';
-
-/** The event in progress, or else the soonest upcoming timed event. */
-export function pickNextEvent(events: CalendarEvent[], now: Date): CalendarEvent | undefined {
-  return events
-    .filter((e) => !e.isAllDay && eventEnd(e) > now)
-    .sort((a, b) => eventStart(a).getTime() - eventStart(b).getTime())[0];
-}
 
 export function NextEventCard({ event, now }: { event: CalendarEvent | undefined; now: Date }) {
   if (!event) {
@@ -21,10 +16,14 @@ export function NextEventCard({ event, now }: { event: CalendarEvent | undefined
   }
 
   const inProgress = eventStart(event) <= now;
+  const unanswered = needsReply(event);
   const when = inProgress ? `ends ${countdown(eventEnd(event).getTime() - now.getTime())}` : countdown(eventStart(event).getTime() - now.getTime());
 
   return (
-    <section className="rounded-lg border border-border bg-surface p-3" aria-label="Next event">
+    <section
+      className={cn('rounded-lg border p-3', unanswered ? 'border-warning/60 bg-warning/10' : 'border-border bg-surface')}
+      aria-label="Next event"
+    >
       <div className="flex items-center justify-between">
         <div className="text-[11px] font-medium uppercase tracking-wide text-subtle">
           {inProgress ? 'Happening now' : 'Next up'}
@@ -35,6 +34,7 @@ export function NextEventCard({ event, now }: { event: CalendarEvent | undefined
         <span aria-hidden className="mt-0.5 h-9 w-[3px] shrink-0 rounded-full" style={{ background: event.color }} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{event.title}</div>
+          {unanswered && <div className="text-xs font-medium text-warning">You haven’t replied to this invite</div>}
           <div className="truncate text-xs text-muted">{formatRange(event)}</div>
         </div>
         {event.meetingLink && (
