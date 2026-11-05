@@ -34,11 +34,12 @@ Chrome MV3 extension: a calendar and task dashboard on top of Google Calendar. L
 - Header greeting depends on the working hours set in Settings (not the system clock).
 - Popup has a Day/Links switch (`PopupLinks`: search, fold sections, open links; adding/editing stays in the side panel), a refresh button and previous/next/Today day stepping (`DayStepper`, `dayAgenda`). Next up skips declined events (`nextEvent.ts`); invites you have not answered are highlighted yellow.
 - Links tab (bookmarks): sections with colours, labelled colour-coded links, collapsible sections (state in `dayflow:bookmarks-ui`, logic in `collapse.ts`, deliberately not exported), search, edit/delete, drag-and-drop for links (reorder / move between sections) and sections, up/down buttons as a keyboard route, export/import JSON (merge or replace; unsafe URLs dropped, only http/https allowed).
+- Meeting reminders (only `selfResponse === 'accepted'` or events you organise with no invite; events with no response that someone else owns never qualify, so don't use `effectiveResponse` here): service worker alarm `dayflow-remind` (every minute) reads the IndexedDB cache, applies `applyFilters`, and shows a `chrome.notifications` notification (Join button opens `meetingLink`, click opens side panel or falls back to the event page). Pure logic in `src/core/notify/reminders.ts` (`dueReminders`, dedupe by calendar+id+start kept in `chrome.storage.session`). Prefs `remindersEnabled`, `reminderLeadMinutes` (default 5); Settings → Meeting reminders. Needs the `notifications` permission (user must approve on reload).
 - Tab bar scrolls sideways and the tabs can be reordered by drag or from Settings → Tab order (`prefs.tabOrder`, logic in `src/core/nav/tabOrder.ts`).
 
 ## Not verified against real Google or a browser
 
-Meet creation, event edit, cancel, RSVP, the popup's "Open side panel" button, narrow-width layouts, and all drag-and-drop interactions. Only typecheck, build and unit tests (108) have run. Test anything that sends email with a throwaway meeting.
+Meet creation, event edit, cancel, RSVP, the popup's "Open side panel" button, meeting reminders (notification, Join button, click behaviour), narrow-width layouts, and all drag-and-drop interactions. Only typecheck, build and unit tests (134) have run. Test anything that sends email with a throwaway meeting.
 
 ## Ideas not built
 

@@ -1,15 +1,55 @@
 import { ArrowDown, ArrowUp, Eye, RotateCcw, X } from 'lucide-react';
+import { format } from 'date-fns';
 import { useState } from 'react';
 import type { FilterResult } from '@/core/filters/filterEngine';
 import { RULE_KIND_LABELS, addRulePatch, hideSenderPatch, restorePatch, ruleSummary, senderCounts } from '@/core/filters/hideActions';
 import { DEFAULT_TAB_ORDER, type CalendarInfo, type ExclusionRuleKind } from '@/core/models';
 import { nudgeTab } from '@/core/nav/tabOrder';
+import { REMINDER_LEAD_OPTIONS } from '@/core/notify/reminders';
 import { MAX_EXTRA_ZONES, ZONE_PRESETS, allZoneIds, systemZone, zoneAbbr, zoneLabel } from '@/core/time/zones';
 import { usePrefs } from '@/app/hooks/usePrefs';
+import { useReminderStatus } from '@/app/hooks/useReminderStatus';
 import { TAB_META } from '@/app/components/tabMeta';
 import { Button, IconButton } from '@/app/components/ui/Button';
 import { Segmented } from '@/app/components/ui/Segmented';
 import { Switch } from '@/app/components/ui/Switch';
+
+function ReminderCheck() {
+  const status = useReminderStatus();
+  const [testResult, setTestResult] = useState('');
+
+  const sendTest = async () => {
+    setTestResult('');
+    try {
+      if (!chrome.notifications) throw new Error('Notifications permission is missing. Reload the extension at chrome://extensions and approve it.');
+      await chrome.notifications.create(`dayflow-test:${Date.now()}`, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+        title: 'Dayflow test reminder',
+        message: 'If you can see this, reminders can reach your screen.',
+      });
+      setTestResult('Sent. If nothing appeared, check Chrome and system notification settings (macOS: System Settings → Notifications → Google Chrome; also turn off Focus / Do Not Disturb).');
+    } catch (err) {
+      setTestResult(`Could not send: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  };
+
+  const checked = status.lastCheckedAt ? format(status.lastCheckedAt, 'p') : null;
+  return (
+    <div className="space-y-1 pb-3 text-xs text-subtle">
+      <div>
+        {checked ? `Last checked at ${checked}, looking at ${status.considered} event(s).` : 'The background check has not run yet. It runs every minute while Chrome is open.'}
+      </div>
+      {status.next ? <div>Next reminder: {status.next.title} at {format(new Date(status.next.start), 'p')} ({status.next.reason}).</div> : status.lastCheckedAt && <div>No upcoming meetings you accepted.</div>}
+      {status.lastShownAt && <div>Last reminder shown at {format(status.lastShownAt, 'p')}.</div>}
+      {status.lastError && <div role="alert" className="text-danger">Problem: {status.lastError}</div>}
+      <div className="flex items-center gap-2 pt-1">
+        <Button size="sm" variant="secondary" onClick={() => void sendTest()}>Send test notification</Button>
+      </div>
+      {testResult && <div role="status">{testResult}</div>}
+    </div>
+  );
+}
 
 function Row({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -128,6 +168,24 @@ export function SettingsView({ calendars, filtered, signedIn, email, onDisconnec
             />
           </div>
         </Row>
+        <Row title="Meeting reminders" hint="A desktop notification with a Join button, only for meetings you accepted.">
+          <div className="flex items-center gap-2">
+            {prefs.remindersEnabled && (
+              <select
+                aria-label="Remind me before a meeting"
+                className={inputClass}
+                value={prefs.reminderLeadMinutes}
+                onChange={(e) => setPrefs({ reminderLeadMinutes: Number(e.target.value) })}
+              >
+                {[...new Set([...REMINDER_LEAD_OPTIONS, prefs.reminderLeadMinutes])].sort((a, b) => a - b).map((m) => (
+                  <option key={m} value={m}>{m} min before</option>
+                ))}
+              </select>
+            )}
+            <Switch label="Meeting reminders" checked={prefs.remindersEnabled} onChange={(on) => setPrefs({ remindersEnabled: on })} />
+          </div>
+        </Row>
+        {prefs.remindersEnabled && <ReminderCheck />}
         <Row title="Week starts on">
           <select
             aria-label="Week starts on"

@@ -19,6 +19,11 @@ Dayflow is **local-first**. Your tasks, bookmarks and settings are stored only i
 - A simple to-do list on the Today tab: add a task, tick it off, delete it. Overdue tasks are flagged in red.
 - Tasks are local only. They are never written to Google Calendar.
 
+**Meeting reminders**
+- A desktop notification appears 5 minutes before each meeting, with a **Join meeting** button when the event has a video link. Clicking the notification opens the side panel. It stays on screen until you dismiss it.
+- Only meetings you accepted trigger one (events you organise yourself count too; an event with no reply from you that someone else owns does not). Maybe, unanswered and declined invites, cancelled events, all-day events and anything you've hidden never do. You can change the lead time (1 to 30 minutes) or turn reminders off in Settings → Meeting reminders.
+- Checked about once a minute from the local cache, so no extra Google access is needed. Your operating system's "Do not disturb" and Chrome's notification settings still apply.
+
 **Hide the noise**
 - Hide a single event, a whole recurring series, or everything from a sender (an email or `@domain`).
 - Rules by title, organizer, calendar, declined events, or past events. Hidden items can be restored from Settings.
@@ -82,7 +87,7 @@ If you run the app in **Testing** mode (the right choice for personal use), Goog
 | `calendar.events.readonly` | Read events |
 | `calendar.events.owned` | Create, edit, cancel or answer an event, **only when you press the matching button** |
 
-Chrome permissions: `storage` (save settings locally), `sidePanel`, `identity` (Google sign-in), `alarms` (periodic refresh).
+Chrome permissions: `storage` (save settings locally), `sidePanel`, `identity` (Google sign-in), `alarms` (periodic refresh and the reminder check), `notifications` (meeting reminders).
 
 Sign-in uses the OAuth implicit flow, so there are no refresh tokens: the token lasts about an hour and Dayflow renews it silently when Google allows it, otherwise it shows **Reconnect**. Disconnecting revokes the token and clears the cached calendar data. Tasks, bookmarks and settings are kept.
 
@@ -92,7 +97,7 @@ Sign-in uses the OAuth implicit flow, so there are no refresh tokens: the token 
 |---|---|
 | Calendar events (cache) | IndexedDB in your browser |
 | Tasks, bookmarks, settings | `chrome.storage.local` in your browser |
-| Sign-in token | `chrome.storage.session` (cleared when the browser closes) |
+| Sign-in token, and which reminders have been shown | `chrome.storage.session` (cleared when the browser closes) |
 
 Uninstalling the extension deletes all of it. Export your bookmarks first (Links → Backup &amp; transfer) if you want to keep them. Tasks and settings are not included in that export, and neither is which sections are folded.
 
@@ -130,7 +135,8 @@ If you fork this project, generate your own key (and ID), update the manifest, a
 
 ## Known limitations
 
-- **Not yet verified against a real Google account or in a live browser:** Meet creation, editing, cancelling and RSVP (these send real invitation emails; test with a throwaway meeting first), the popup's "Open side panel" button, the popup's Day and Links views, narrow-width layout, and all drag-and-drop interactions. Typecheck, build and the unit tests pass.
+- **Not yet verified against a real Google account or in a live browser:** Meet creation, editing, cancelling and RSVP (these send real invitation emails; test with a throwaway meeting first), the popup's "Open side panel" button, the popup's Day and Links views, meeting reminders (the notification, its Join button and the click-to-open behaviour), narrow-width layout, and all drag-and-drop interactions. Typecheck, build and the unit tests pass.
+- Reminders are only as fresh as the last sync (every 15 minutes by default), so a meeting added at the last minute may not trigger one. They also need Chrome to be running.
 - Sign-in lasts about an hour per token; expect an occasional Reconnect. In Testing mode you must also reconnect about weekly.
 - Workspace accounts may be blocked by your organisation's admin policy for third-party apps.
 - Only a window of 30 days back and 120 days forward is synced.

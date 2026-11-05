@@ -42,6 +42,10 @@ export interface UserPreferences {
   responseFilter: ResponseFilter;
   /** IANA zones (e.g. "America/New_York") shown alongside your own time for comparison. */
   extraTimezones: string[];
+  /** Show a desktop notification shortly before each meeting you're attending. */
+  remindersEnabled: boolean;
+  /** How many minutes before the start the reminder appears. */
+  reminderLeadMinutes: number;
 }
 
 export const DEFAULT_PREFS: UserPreferences = {
@@ -57,4 +61,6 @@ export const DEFAULT_PREFS: UserPreferences = {
   exclusionRules: [],
   responseFilter: 'all',
   extraTimezones: ['America/New_York', 'America/Los_Angeles', 'Europe/London'],
+  remindersEnabled: true,
+  reminderLeadMinutes: 5,
 };
