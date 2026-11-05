@@ -148,3 +148,25 @@ If you fork this project, generate your own key (and ID), update the manifest, a
 ## License
 
 No license has been chosen yet. Until one is added, all rights are reserved. Add a `LICENSE` file (for example MIT) before inviting contributions.
+
+
+
+
+
+## 📸 Screenshots
+
+<div align="center">
+
+<img width="270" alt="Screenshot 1" src="https://github.com/user-attachments/assets/4ff9a649-5e9c-4299-8cb0-8d587b98f390" />
+<img width="270" alt="Screenshot 2" src="https://github.com/user-attachments/assets/75f28107-6333-4a8f-9527-68a6d1f42018" />
+<img width="270" alt="Screenshot 3" src="https://github.com/user-attachments/assets/ed6ffbce-6395-43f8-8dba-8870e6690054" />
+
+<br/>
+
+<img width="700" alt="Screenshot 4" src="https://github.com/user-attachments/assets/82238a14-69ee-4108-b898-fb8eb442348f" />
+
+<br/>
+
+<img width="700" alt="Screenshot 5" src="https://github.com/user-attachments/assets/3459e956-4a38-438e-a699-8e38dc4e43ff" />
+
+</div>
