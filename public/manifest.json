@@ -30,6 +30,13 @@
     "notifications"
   ],
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzu5C3i2Ok0UD5ovey8Z2TWpEtHdp2HpIsKn7qlQIirvj1rWzHCdCpQLqRwifXjBI0+gL0/2wfxQUBeBPGrRATK0C3aHOQUWkMbmVz5NS2gV8y+2ASp39hJae53LmYdgA13x0lZeEv8hEC1bYVvBxAJUhy+ca8HKcp+3+B7VaxEcgN5ErsZbc5caiLR17MOhex4ki/cRedPgeUc1+ZE9+RRNsWyVpEyh/+/jR5ELtQ31Q2oppHn4bBxRyqYeiLpdppr0oFFYl4AssguimMUkdmnrvyIwhpkit/hteGzF2dIxxnSeW0/lSz6X4r7cLTfOxT1Rz5fl1vBDm35twofXhbwIDAQAB",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["edge-tab.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"

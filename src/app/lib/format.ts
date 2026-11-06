@@ -1,14 +1,15 @@
-import { format } from 'date-fns';
 import type { CalendarEvent } from '@/core/models';
 import { eventEnd, eventStart } from '@/core/time/eventTime';
+import { formatTimeIn } from '@/core/time/zones';
 
-export function formatTime(date: Date): string {
-  return format(date, 'h:mm a').replace(':00 ', ' ').toLowerCase();
+/** Clock time of an instant as it reads in `zone`. */
+export function formatTime(date: Date, zone: string): string {
+  return formatTimeIn(date, zone);
 }
 
-export function formatRange(e: CalendarEvent): string {
+export function formatRange(e: CalendarEvent, zone: string): string {
   if (e.isAllDay) return 'All day';
-  return `${formatTime(eventStart(e))} – ${formatTime(eventEnd(e))}`;
+  return `${formatTime(eventStart(e), zone)} – ${formatTime(eventEnd(e), zone)}`;
 }
 
 export function formatDuration(minutes: number): string {

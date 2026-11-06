@@ -1,13 +1,13 @@
-import { format } from 'date-fns';
 import { AlertTriangle, Check, Copy, ExternalLink, Video } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
 import { AuthError } from '@/core/google/auth';
 import { ApiError, findMeetLink, insertEvent } from '@/core/google/calendarApi';
 import { buildMeetingBody, fitsWorkingHours } from '@/core/google/meeting';
 import { requestSync } from '@/core/sync/requestSync';
-import { dayOffset, formatDayIn, formatTimeIn, systemZone, zoneAbbr, zoneLabel, zonedTimeToDate } from '@/core/time/zones';
+import { dayKeyIn, dayOffset, formatDayIn, formatTimeIn, hhmm, minutesInZone, systemZone, zoneAbbr, zoneLabel, zonedTimeToDate } from '@/core/time/zones';
 import { usePrefs } from '@/app/hooks/usePrefs';
-import { useZones } from '@/app/hooks/useZones';
+import { useHomeZone } from '@/app/hooks/useHomeZone';
+import { useCompareZones } from '@/app/hooks/useZones';
 import { EmailChipInput } from '@/app/components/EmailChipInput';
 import { Button } from '@/app/components/ui/Button';
 import { cn } from '@/app/lib/cn';
@@ -15,9 +15,9 @@ import { cn } from '@/app/lib/cn';
 const DURATIONS = [15, 30, 45, 60, 90];
 const inputClass = 'h-8 rounded-md border border-border bg-surface px-2 text-[13px] outline-none focus:border-accent';
 
-function nextHalfHour(now: Date): string {
-  const m = Math.ceil((now.getHours() * 60 + now.getMinutes() + 1) / 30) * 30;
-  return format(new Date(2000, 0, 1, 0, Math.min(m, 23 * 60 + 30)), 'HH:mm');
+function nextHalfHour(now: Date, zone: string): string {
+  const m = Math.ceil((minutesInZone(now, zone) + 1) / 30) * 30;
+  return hhmm(Math.min(m, 23 * 60 + 30));
 }
 
 interface Created {
@@ -35,13 +35,15 @@ interface Props {
 
 export function MeetingView({ now, signedIn, onReconnect, busy: authBusy }: Props) {
   const { prefs } = usePrefs();
-  const mine = systemZone();
-  const zones = useZones().filter((z) => z !== mine);
+  // The meeting is stored on Google in this computer's zone (your calendar's zone); you work in the home zone.
+  const calendarZone = systemZone();
+  const home = useHomeZone();
+  const zones = useCompareZones();
 
   const [title, setTitle] = useState('');
-  const [date, setDate] = useState(() => format(now, 'yyyy-MM-dd'));
-  const [time, setTime] = useState(() => nextHalfHour(now));
-  const [entryZone, setEntryZone] = useState(mine);
+  const [date, setDate] = useState(() => dayKeyIn(now, home));
+  const [time, setTime] = useState(() => nextHalfHour(now, home));
+  const [entryZone, setEntryZone] = useState(home);
   const [duration, setDuration] = useState(30);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -72,7 +74,7 @@ export function MeetingView({ now, signedIn, onReconnect, busy: authBusy }: Prop
           attendees: valid,
           notes,
           zones: selected,
-          timeZone: mine,
+          timeZone: calendarZone,
           requestId: crypto.randomUUID(),
         }),
       );
@@ -142,7 +144,7 @@ export function MeetingView({ now, signedIn, onReconnect, busy: authBusy }: Prop
     );
   }
 
-  const rows = [mine, ...selected];
+  const rows = [home, ...selected];
   return (
     <form onSubmit={(e) => void submit(e)} className="space-y-4">
       <div>
@@ -167,7 +169,7 @@ export function MeetingView({ now, signedIn, onReconnect, busy: authBusy }: Prop
         <label className="block">
           <span className="mb-1 block text-xs text-subtle">Time is in</span>
           <select className={`${inputClass} w-full`} value={entryZone} onChange={(e) => setEntryZone(e.target.value)}>
-            <option value={mine}>Your time ({zoneLabel(mine)})</option>
+            <option value={home}>Your time ({zoneLabel(home)})</option>
             {zones.map((z) => (
               <option key={z} value={z}>
                 {zoneLabel(z)}
@@ -195,9 +197,9 @@ export function MeetingView({ now, signedIn, onReconnect, busy: authBusy }: Prop
           </div>
           <ul className="divide-y divide-border rounded-lg border border-border bg-surface">
             {rows.map((z) => {
-              const isMine = z === mine;
+              const isMine = z === home;
               const ok = fitsWorkingHours(start, duration, z, prefs.workingHours);
-              const offset = dayOffset(start, z);
+              const offset = dayOffset(start, z, home);
               return (
                 <li key={z} className="flex items-center gap-2 px-3 py-2 text-[13px]">
                   {isMine ? (

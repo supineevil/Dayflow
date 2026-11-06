@@ -1,4 +1,4 @@
-import { startOfDay } from 'date-fns';
+import { isSameDay } from 'date-fns';
 import { ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TabId } from '@/core/models';
@@ -7,6 +7,7 @@ import { filterByResponse } from '@/core/filters/responseFilter';
 import { greeting } from '@/core/planning/greeting';
 import { useAccount } from '@/app/hooks/useAccount';
 import { useCalendarData } from '@/app/hooks/useCalendarData';
+import { useToday } from '@/app/hooks/useHomeZone';
 import { useNow } from '@/app/hooks/useNow';
 import { usePrefs } from '@/app/hooks/usePrefs';
 import { useTheme } from '@/app/hooks/useTheme';
@@ -32,7 +33,11 @@ export function AppShell({ wide = false }: { wide?: boolean }) {
   const { calendars, filtered, refresh, syncing, loading, syncError, cacheError, account } = useCalendarData(now);
   const { busy, error: connectError, connect, disconnect } = useAccount();
   const [view, setView] = useState<ViewId | null>(null);
-  const [day, setDay] = useState(() => startOfDay(new Date()));
+  const { zone: home, today } = useToday(now);
+  // null means "follow today", so the view rolls over at midnight in the home zone and when that zone changes.
+  const [picked, setPicked] = useState<Date | null>(null);
+  const day = picked ?? today;
+  const setDay = (next: Date) => setPicked(isSameDay(next, today) ? null : next);
 
   const active: ViewId = view ?? prefs.defaultView;
   const navRef = useRef<HTMLElement>(null);
@@ -50,7 +55,7 @@ export function AppShell({ wide = false }: { wide?: boolean }) {
       <header className="sticky top-0 z-10 border-b border-border bg-bg/90 px-4 pb-2 pt-3 backdrop-blur">
         <div className="flex items-center justify-between">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{greeting(now, prefs.workingHours)}</div>
+            <div className="truncate text-sm font-semibold">{greeting(now, prefs.workingHours, home)}</div>
             <div className="flex items-center gap-1.5 text-xs text-subtle">
               {account.email && <span className="truncate">{account.email}</span>}
               {hiddenCount > 0 && <span>{hiddenCount} hidden</span>}

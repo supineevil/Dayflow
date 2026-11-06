@@ -1,4 +1,4 @@
-import { format, isSameDay, startOfDay } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { useState } from 'react';
 import { Loader2, PanelRight, RefreshCw, Settings } from 'lucide-react';
 import { AllDayStrip } from '@/app/components/AllDayStrip';
@@ -10,6 +10,7 @@ import { EventRow } from '@/app/components/EventRow';
 import { NextEventCard } from '@/app/components/NextEventCard';
 import { Button, IconButton } from '@/app/components/ui/Button';
 import { useCalendarData } from '@/app/hooks/useCalendarData';
+import { useToday } from '@/app/hooks/useHomeZone';
 import { useNow } from '@/app/hooks/useNow';
 import { usePrefs } from '@/app/hooks/usePrefs';
 import { useTheme } from '@/app/hooks/useTheme';
@@ -34,18 +35,21 @@ export function Popup() {
   const { filtered, loading, account, syncError, syncing, refresh } = useCalendarData(now);
 
   const [tab, setTab] = useState<'day' | 'links'>('day');
-  const [picked, setPicked] = useState(() => startOfDay(now));
-  const isToday = isSameDay(picked, now);
-  const today = eventsOnDay(filtered.visible, startOfDay(now));
+  const { zone: home, today: todayDate } = useToday(now);
+  // null follows today in the home zone, so the popup rolls over at midnight there.
+  const [pickedDay, setPickedDay] = useState<Date | null>(null);
+  const picked = pickedDay ?? todayDate;
+  const isToday = isSameDay(picked, todayDate);
+  const today = eventsOnDay(filtered.visible, todayDate, home);
   // Events you declined don't belong in a bar meant to show what's coming up for you.
   const remaining = upcomingAttending(today, now).slice(0, 4);
-  const other = dayAgenda(filtered.visible, picked);
+  const other = dayAgenda(filtered.visible, picked, home);
 
   return (
     <div className="p-3">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <div className="text-sm font-semibold">{greeting(now, prefs.workingHours)}</div>
+          <div className="text-sm font-semibold">{greeting(now, prefs.workingHours, home)}</div>
         </div>
         <div className="flex items-center gap-0.5">
           {account.signedIn && (
@@ -77,7 +81,7 @@ export function Popup() {
       {account.signedIn && (
         <div className="-mt-1 mb-2 flex items-center justify-between">
           <div className="text-xs text-muted">{format(picked, 'EEEE, d MMMM')}</div>
-          <DayStepper day={picked} now={now} onChange={setPicked} />
+          <DayStepper day={picked} today={todayDate} onChange={(d) => setPickedDay(isSameDay(d, todayDate) ? null : d)} />
         </div>
       )}
 
@@ -96,7 +100,7 @@ export function Popup() {
                 <div>
                   <h2 className="mb-1 px-2 text-[11px] font-medium uppercase tracking-wide text-subtle">Later today</h2>
                   {remaining.slice(1).map((e) => (
-                    <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} showActions={false} />
+                    <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} day={picked} showActions={false} />
                   ))}
                 </div>
               )}
@@ -109,7 +113,7 @@ export function Popup() {
               ) : (
                 <div className="max-h-80 overflow-y-auto">
                   {other.timed.map((e) => (
-                    <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} showActions={false} />
+                    <EventRow key={`${e.calendarId}:${e.id}`} event={e} now={now} day={picked} showActions={false} />
                   ))}
                 </div>
               )}

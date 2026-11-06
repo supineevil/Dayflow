@@ -4,8 +4,10 @@ import { needsReply } from '@/core/planning/nextEvent';
 import { eventEnd, eventStart } from '@/core/time/eventTime';
 import { cn } from '@/app/lib/cn';
 import { countdown, formatRange } from '@/app/lib/format';
+import { useHomeZone } from '@/app/hooks/useHomeZone';
 
 export function NextEventCard({ event, now }: { event: CalendarEvent | undefined; now: Date }) {
+  const zone = useHomeZone();
   if (!event) {
     return (
       <section className="rounded-lg border border-border bg-surface p-3">
@@ -35,7 +37,7 @@ export function NextEventCard({ event, now }: { event: CalendarEvent | undefined
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{event.title}</div>
           {unanswered && <div className="text-xs font-medium text-warning">You haven’t replied to this invite</div>}
-          <div className="truncate text-xs text-muted">{formatRange(event)}</div>
+          <div className="truncate text-xs text-muted">{formatRange(event, zone)}</div>
         </div>
         {event.meetingLink && (
           <a

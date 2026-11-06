@@ -42,6 +42,13 @@ export interface UserPreferences {
   responseFilter: ResponseFilter;
   /** IANA zones (e.g. "America/New_York") shown alongside your own time for comparison. */
   extraTimezones: string[];
+  /**
+   * IANA zone that defines "today" and the clock for the whole extension (day boundaries, times shown, working hours,
+   * reminders). Empty means this computer's zone. Your Google Calendar itself is not changed.
+   */
+  homeTimezone: string;
+  /** Show a slim handle on the right edge of web pages that opens the side panel. */
+  edgeTabEnabled: boolean;
   /** Show a desktop notification shortly before each meeting you're attending. */
   remindersEnabled: boolean;
   /** How many minutes before the start the reminder appears. */
@@ -61,6 +68,8 @@ export const DEFAULT_PREFS: UserPreferences = {
   exclusionRules: [],
   responseFilter: 'all',
   extraTimezones: ['America/New_York', 'America/Los_Angeles', 'Europe/London'],
+  homeTimezone: '',
+  edgeTabEnabled: true,
   remindersEnabled: true,
   reminderLeadMinutes: 5,
 };

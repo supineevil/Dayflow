@@ -85,8 +85,8 @@ body {
 
 /* The popup has no surrounding window chrome, so give it a fixed size. */
 body.popup {
-  width: 360px;
-  min-height: 200px;
+  width: 440px;
+  min-height: 240px;
 }
 
 ::selection {

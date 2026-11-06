@@ -30,6 +30,11 @@ export const MAX_EXTRA_ZONES = 5;
 
 export const systemZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+/** Your chosen home zone, or this computer's zone when none is set (or the saved one is no longer valid). */
+export function resolveZone(pref: string | undefined): string {
+  return pref && isValidZone(pref) ? pref : systemZone();
+}
+
 export function isValidZone(zone: string): boolean {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: zone });
@@ -98,10 +103,12 @@ export function minutesInZone(date: Date, zone: string): number {
   return h * 60 + mi;
 }
 
-/** Calendar-day difference between `zone` and the viewer's own zone at this instant (-1, 0, +1...). */
-export function dayOffset(date: Date, zone: string): number {
+/**
+ * Calendar-day difference between `zone` and `relativeTo` (the viewer's own zone by default) at this instant (-1, 0, +1...).
+ */
+export function dayOffset(date: Date, zone: string, relativeTo: string = systemZone()): number {
   const a = wallClock(date, zone);
-  const b = wallClock(date, systemZone());
+  const b = wallClock(date, relativeTo);
   return Math.round((Date.UTC(a.y, a.mo - 1, a.d) - Date.UTC(b.y, b.mo - 1, b.d)) / 86_400_000);
 }
 
@@ -141,6 +148,7 @@ export function zoneAbbr(date: Date, zone: string): string {
 export function formatTimeIn(date: Date, zone: string): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: 'numeric', minute: '2-digit', hour12: true })
     .format(date)
+    .replace(/\s/g, ' ')
     .replace(':00 ', ' ')
     .toLowerCase();
 }
@@ -166,3 +174,39 @@ export function minuteInHours(minute: number, hours: { start: string; end: strin
 export function inWorkingHours(date: Date, zone: string, hours: { start: string; end: string }): boolean {
   return minuteInHours(minutesInZone(date, zone), hours);
 }
+
+const pad = (n: number, width = 2) => String(n).padStart(width, '0');
+
+/**
+ * A "day" in the app is a plain Date at local midnight that stands for a calendar date, whatever zone the day is read in.
+ * These helpers turn instants into such dates, and dates into the real start and end of that day in a zone.
+ */
+
+/** `yyyy-MM-dd` of a day value (read from its local fields). */
+export const dayKeyOf = (day: Date): string => `${pad(day.getFullYear(), 4)}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+
+/** `yyyy-MM-dd` on the wall clock in `zone` at this instant. */
+export function dayKeyIn(date: Date, zone: string): string {
+  const w = wallClock(date, zone);
+  return `${pad(w.y, 4)}-${pad(w.mo)}-${pad(w.d)}`;
+}
+
+export function dayFromKey(key: string): Date {
+  const [y = 1970, mo = 1, d = 1] = key.split('-').map(Number);
+  return new Date(y, mo - 1, d);
+}
+
+/** The calendar date it is right now in `zone`, as a day value. */
+export const todayIn = (now: Date, zone: string): Date => dayFromKey(dayKeyIn(now, zone));
+
+/** When this day starts in `zone`. */
+export const zonedDayStart = (day: Date, zone: string): Date => zonedTimeToDate(dayKeyOf(day), '00:00', zone);
+
+/** When the day after this one starts in `zone`, which is when this day ends. */
+export function zonedDayEnd(day: Date, zone: string): Date {
+  const next = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1);
+  return zonedTimeToDate(dayKeyOf(next), '00:00', zone);
+}
+
+/** `HH:mm` for a count of minutes after midnight. */
+export const hhmm = (minutes: number): string => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;

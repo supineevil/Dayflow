@@ -1,6 +1,5 @@
-import { format } from 'date-fns';
 import type { WorkingHours } from '../models';
-import { minuteInHours } from '../time/zones';
+import { dayKeyIn, minuteInHours, minutesInZone, systemZone } from '../time/zones';
 
 export type DayPhase = 'early' | 'working' | 'late';
 
@@ -10,8 +9,8 @@ const toMinutes = (hhmm: string): number => {
 };
 
 /** Where `now` falls relative to the working hours from Settings. The end of the day is exclusive, like the rest of the app. */
-export function dayPhase(now: Date, hours: WorkingHours): DayPhase {
-  const minutes = now.getHours() * 60 + now.getMinutes();
+export function dayPhase(now: Date, hours: WorkingHours, zone: string = systemZone()): DayPhase {
+  const minutes = minutesInZone(now, zone);
   if (minuteInHours(minutes, hours)) return 'working';
   return minutes < toMinutes(hours.start) ? 'early' : 'late';
 }
@@ -30,8 +29,8 @@ function hash(text: string): number {
 }
 
 /** One line per phase per day: stays put while you work, and changes tomorrow. */
-export function greeting(now: Date, hours: WorkingHours): string {
-  const phase = dayPhase(now, hours);
+export function greeting(now: Date, hours: WorkingHours, zone: string = systemZone()): string {
+  const phase = dayPhase(now, hours, zone);
   const lines = GREETINGS[phase];
-  return lines[hash(`${format(now, 'yyyy-MM-dd')}:${phase}`) % lines.length]!;
+  return lines[hash(`${dayKeyIn(now, zone)}:${phase}`) % lines.length]!;
 }

@@ -1,18 +1,19 @@
-import { addDays, addMinutes, differenceInMinutes, max as maxDate, min as minDate, parse, startOfDay } from 'date-fns';
+import { addDays, addMinutes, differenceInMinutes, max as maxDate, min as minDate } from 'date-fns';
 import type { CalendarEvent, Task, WorkingHours } from '@/core/models';
 import { durationMinutes, eventEnd, eventStart } from '@/core/time/eventTime';
+import { dayKeyOf, systemZone, zonedTimeToDate } from '@/core/time/zones';
 
 export interface Interval {
   start: Date;
   end: Date;
 }
 
-export function workingInterval(day: Date, hours: WorkingHours): Interval {
-  const base = startOfDay(day);
-  const start = parse(hours.start, 'HH:mm', base);
-  const end = parse(hours.end, 'HH:mm', base);
+/** Working hours on `day`, with the hours read as wall-clock time in `zone`. */
+export function workingInterval(day: Date, hours: WorkingHours, zone: string = systemZone()): Interval {
+  const start = zonedTimeToDate(dayKeyOf(day), hours.start, zone);
+  const end = zonedTimeToDate(dayKeyOf(day), hours.end, zone);
   // A shift that ends after midnight belongs to the day it starts on.
-  return { start, end: end <= start ? addDays(end, 1) : end };
+  return { start, end: end <= start ? zonedTimeToDate(dayKeyOf(addDays(day, 1)), hours.end, zone) : end };
 }
 
 /** Merges overlapping or touching intervals. Input need not be sorted. */
@@ -34,8 +35,8 @@ function timedBusy(events: CalendarEvent[]): Interval[] {
 }
 
 /** Free gaps inside working hours, ignoring gaps shorter than `minMinutes`. */
-export function freeSlots(events: CalendarEvent[], day: Date, hours: WorkingHours, minMinutes = 15): Interval[] {
-  const work = workingInterval(day, hours);
+export function freeSlots(events: CalendarEvent[], day: Date, hours: WorkingHours, minMinutes = 15, zone: string = systemZone()): Interval[] {
+  const work = workingInterval(day, hours, zone);
   const slots: Interval[] = [];
   let cursor = work.start;
   for (const busy of timedBusy(events)) {
@@ -58,8 +59,8 @@ export interface DayStats {
 }
 
 /** Pass only visible (non-hidden) events: hidden events don't count towards any metric. */
-export function dayStats(events: CalendarEvent[], day: Date, hours: WorkingHours, now: Date): DayStats {
-  const work = workingInterval(day, hours);
+export function dayStats(events: CalendarEvent[], day: Date, hours: WorkingHours, now: Date, zone: string = systemZone()): DayStats {
+  const work = workingInterval(day, hours, zone);
   const workMinutes = Math.max(1, differenceInMinutes(work.end, work.start));
   const timed = events.filter((e) => !e.isAllDay);
   const meetingMinutes = timed.reduce((sum, e) => sum + durationMinutes(e), 0);

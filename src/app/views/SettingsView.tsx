@@ -1,13 +1,14 @@
 import { ArrowDown, ArrowUp, Eye, RotateCcw, X } from 'lucide-react';
-import { format } from 'date-fns';
 import { useState } from 'react';
 import type { FilterResult } from '@/core/filters/filterEngine';
 import { RULE_KIND_LABELS, addRulePatch, hideSenderPatch, restorePatch, ruleSummary, senderCounts } from '@/core/filters/hideActions';
 import { DEFAULT_TAB_ORDER, type CalendarInfo, type ExclusionRuleKind } from '@/core/models';
 import { nudgeTab } from '@/core/nav/tabOrder';
 import { REMINDER_LEAD_OPTIONS } from '@/core/notify/reminders';
-import { MAX_EXTRA_ZONES, ZONE_PRESETS, allZoneIds, systemZone, zoneAbbr, zoneLabel } from '@/core/time/zones';
+import { MAX_EXTRA_ZONES, ZONE_PRESETS, allZoneIds, formatTimeIn, resolveZone, systemZone, zoneAbbr, zoneLabel } from '@/core/time/zones';
 import { usePrefs } from '@/app/hooks/usePrefs';
+import { convertWorkingHours } from '@/core/time/workingHoursZone';
+import { useHomeZone } from '@/app/hooks/useHomeZone';
 import { useReminderStatus } from '@/app/hooks/useReminderStatus';
 import { TAB_META } from '@/app/components/tabMeta';
 import { Button, IconButton } from '@/app/components/ui/Button';
@@ -16,6 +17,8 @@ import { Switch } from '@/app/components/ui/Switch';
 
 function ReminderCheck() {
   const status = useReminderStatus();
+  const home = useHomeZone();
+  const at = (ms: number | string) => formatTimeIn(new Date(ms), home);
   const [testResult, setTestResult] = useState('');
 
   const sendTest = async () => {
@@ -34,14 +37,14 @@ function ReminderCheck() {
     }
   };
 
-  const checked = status.lastCheckedAt ? format(status.lastCheckedAt, 'p') : null;
+  const checked = status.lastCheckedAt ? at(status.lastCheckedAt) : null;
   return (
     <div className="space-y-1 pb-3 text-xs text-subtle">
       <div>
         {checked ? `Last checked at ${checked}, looking at ${status.considered} event(s).` : 'The background check has not run yet. It runs every minute while Chrome is open.'}
       </div>
-      {status.next ? <div>Next reminder: {status.next.title} at {format(new Date(status.next.start), 'p')} ({status.next.reason}).</div> : status.lastCheckedAt && <div>No upcoming meetings you accepted.</div>}
-      {status.lastShownAt && <div>Last reminder shown at {format(status.lastShownAt, 'p')}.</div>}
+      {status.next ? <div>Next reminder: {status.next.title} at {at(status.next.start)} ({status.next.reason}).</div> : status.lastCheckedAt && <div>No upcoming meetings you accepted.</div>}
+      {status.lastShownAt && <div>Last reminder shown at {at(status.lastShownAt)}.</div>}
       {status.lastError && <div role="alert" className="text-danger">Problem: {status.lastError}</div>}
       <div className="flex items-center gap-2 pt-1">
         <Button size="sm" variant="secondary" onClick={() => void sendTest()}>Send test notification</Button>
@@ -76,6 +79,7 @@ interface Props {
 }
 
 export function SettingsView({ calendars, filtered, signedIn, email, onDisconnect, busy }: Props) {
+  const home = useHomeZone();
   const { prefs, setPrefs } = usePrefs();
   const [ruleKind, setRuleKind] = useState<ExclusionRuleKind>('organizer');
   const [ruleValue, setRuleValue] = useState('');
@@ -149,7 +153,7 @@ export function SettingsView({ calendars, filtered, signedIn, email, onDisconnec
             })}
           </ol>
         </div>
-        <Row title="Working hours" hint="Used for free time and day progress.">
+        <Row title="Working hours" hint={`Used for free time and day progress. Times are in ${zoneLabel(home)}.`}>
           <div className="flex items-center gap-1.5">
             <input
               type="time"
@@ -167,6 +171,9 @@ export function SettingsView({ calendars, filtered, signedIn, email, onDisconnec
               onChange={(e) => e.target.value && setPrefs({ workingHours: { ...prefs.workingHours, end: e.target.value } })}
             />
           </div>
+        </Row>
+        <Row title="Edge tab" hint="A slim handle on the right edge of web pages. Click it to open the side panel. Takes effect on pages as you open or refresh them.">
+          <Switch label="Edge tab" checked={prefs.edgeTabEnabled} onChange={(on) => setPrefs({ edgeTabEnabled: on })} />
         </Row>
         <Row title="Meeting reminders" hint="A desktop notification with a Join button, only for meetings you accepted.">
           <div className="flex items-center gap-2">
@@ -201,9 +208,44 @@ export function SettingsView({ calendars, filtered, signedIn, email, onDisconnec
       </div>
 
       <h2 className="mb-1 mt-6 text-[13px] font-semibold">Time zones</h2>
+      <Row
+        title="My time zone"
+        hint={`Sets what "today" means and the clock used everywhere in Dayflow. Your Google Calendar is not changed. This computer is on ${zoneLabel(systemZone())}.`}
+      >
+        <select
+          aria-label="My time zone"
+          className={inputClass}
+          value={prefs.homeTimezone}
+          onChange={(e) =>
+            // Carry working hours across so they stay the same moments in time, now written in the new zone.
+            setPrefs({
+              homeTimezone: e.target.value,
+              workingHours: convertWorkingHours(prefs.workingHours, home, resolveZone(e.target.value), new Date()),
+            })
+          }
+        >
+          <option value="">This computer ({zoneLabel(systemZone())})</option>
+          <optgroup label="Common">
+            {ZONE_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </optgroup>
+          <optgroup label="All time zones">
+            {allZoneIds()
+              .filter((id) => !ZONE_PRESETS.some((p) => p.id === id))
+              .map((id) => (
+                <option key={id} value={id}>{id.replace(/_/g, ' ')}</option>
+              ))}
+          </optgroup>
+        </select>
+      </Row>
+      <p className="mb-2 text-xs text-subtle">
+        Now in {zoneLabel(resolveZone(prefs.homeTimezone))}: {formatTimeIn(new Date(), resolveZone(prefs.homeTimezone))} {zoneAbbr(new Date(), resolveZone(prefs.homeTimezone))}.
+        Working hours, reminders and the day shown are all read in this zone. Changing it converts your working hours to the same moments in the new zone; adjust them above if you work different hours there.
+      </p>
       <p className="mb-1 text-xs text-subtle">
-        Compare your time ({zoneLabel(systemZone())}) with your customers' on the Today slider and in each event. Daylight saving is handled
-        automatically.
+        Compare your time with your customers' on the Today slider and in each event. Your computer's zone is included automatically when it
+        differs. Daylight saving is handled automatically.
       </p>
       <ul className="divide-y divide-border">
         {prefs.extraTimezones.map((z) => (
@@ -229,7 +271,7 @@ export function SettingsView({ calendars, filtered, signedIn, email, onDisconnec
         >
           <option value="">Add a time zone…</option>
           <optgroup label="Common">
-            {ZONE_PRESETS.filter((p) => !prefs.extraTimezones.includes(p.id)).map((p) => (
+            {ZONE_PRESETS.filter((p) => p.id !== home && !prefs.extraTimezones.includes(p.id)).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.label}
               </option>
@@ -237,7 +279,7 @@ export function SettingsView({ calendars, filtered, signedIn, email, onDisconnec
           </optgroup>
           <optgroup label="All time zones">
             {allZoneIds()
-              .filter((id) => !prefs.extraTimezones.includes(id) && !ZONE_PRESETS.some((p) => p.id === id))
+              .filter((id) => id !== home && !prefs.extraTimezones.includes(id) && !ZONE_PRESETS.some((p) => p.id === id))
               .map((id) => (
                 <option key={id} value={id}>
                   {id.replace(/_/g, ' ')}

@@ -1,9 +1,9 @@
-import { addMinutes, differenceInMinutes, startOfDay } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
 import { ChevronDown, Globe, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { CalendarEvent, WorkingHours } from '@/core/models';
 import { durationMinutes, eventStart } from '@/core/time/eventTime';
-import { dayOffset, formatTimeIn, inWorkingHours, systemZone, zoneLabel, zoneTag } from '@/core/time/zones';
+import { dayKeyOf, dayOffset, formatTimeIn, hhmm, inWorkingHours, zonedDayStart, zonedTimeToDate, zoneLabel, zoneTag } from '@/core/time/zones';
 import { cn } from '@/app/lib/cn';
 import { IconButton } from './ui/Button';
 
@@ -12,6 +12,8 @@ const SEGMENTS = (24 * 60) / STEP;
 
 interface RowProps {
   zone: string;
+  /** The home zone: the row for you, and the zone the slider and the bar are measured in. */
+  homeZone: string;
   isLocal: boolean;
   day: Date;
   at: Date;
@@ -25,15 +27,15 @@ export function cellColour(isSelected: boolean, isWork: boolean, ok: boolean): s
   return isWork ? 'bg-success/45' : 'bg-surface-2';
 }
 
-function ZoneRow({ zone, isLocal, day, at, minutes, hours }: RowProps) {
-  // One cell per 15 minutes of the viewed (local) day: is it working time in this zone?
+function ZoneRow({ zone, homeZone, isLocal, day, at, minutes, hours }: RowProps) {
+  // One cell per 15 minutes of the viewed (home) day: is it working time in this zone?
   const working = useMemo(() => {
-    const base = startOfDay(day);
-    return Array.from({ length: SEGMENTS }, (_, i) => inWorkingHours(addMinutes(base, i * STEP), zone, hours));
-  }, [day, zone, hours]);
+    const key = dayKeyOf(day);
+    return Array.from({ length: SEGMENTS }, (_, i) => inWorkingHours(zonedTimeToDate(key, hhmm(i * STEP), homeZone), zone, hours));
+  }, [day, zone, homeZone, hours]);
 
   const selected = Math.min(SEGMENTS - 1, Math.floor(minutes / STEP));
-  const offset = dayOffset(at, zone);
+  const offset = dayOffset(at, zone, homeZone);
   const ok = inWorkingHours(at, zone, hours);
 
   return (
@@ -75,7 +77,7 @@ function ZoneRow({ zone, isLocal, day, at, minutes, hours }: RowProps) {
 
 interface Props {
   day: Date;
-  /** Minutes after local midnight of `day`. */
+  /** Minutes after midnight of `day` in the home zone. */
   minutes: number;
   onChange: (minutes: number) => void;
   /** Set when the slider has been moved away from its default, to offer a reset. */
@@ -83,13 +85,15 @@ interface Props {
   zones: string[];
   events: CalendarEvent[];
   hours: WorkingHours;
+  /** The zone that defines the viewed day. */
+  homeZone: string;
 }
 
-export function TimezonePlanner({ day, minutes, onChange, onReset, zones, events, hours }: Props) {
+export function TimezonePlanner({ day, minutes, onChange, onReset, zones, events, hours, homeZone }: Props) {
   const [open, setOpen] = useState(true);
-  const base = startOfDay(day);
-  const at = addMinutes(base, minutes);
-  const local = systemZone();
+  const base = zonedDayStart(day, homeZone);
+  const at = zonedTimeToDate(dayKeyOf(day), hhmm(minutes), homeZone);
+  const local = homeZone;
 
   const busy = events
     .filter((e) => !e.isAllDay)
@@ -148,11 +152,11 @@ export function TimezonePlanner({ day, minutes, onChange, onReset, zones, events
             <p className="mt-2 text-xs text-subtle">Add time zones in Settings to compare them here.</p>
           ) : (
             <ul className="mt-2 divide-y divide-border">
-              <ZoneRow zone={local} isLocal day={day} at={at} minutes={minutes} hours={hours} />
+              <ZoneRow zone={local} homeZone={homeZone} isLocal day={day} at={at} minutes={minutes} hours={hours} />
               {zones
                 .filter((z) => z !== local)
                 .map((z) => (
-                  <ZoneRow key={z} zone={z} isLocal={false} day={day} at={at} minutes={minutes} hours={hours} />
+                  <ZoneRow key={z} zone={z} homeZone={homeZone} isLocal={false} day={day} at={at} minutes={minutes} hours={hours} />
                 ))}
             </ul>
           )}

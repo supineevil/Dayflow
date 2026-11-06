@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { ChevronRight, EyeOff, ExternalLink, Globe, MapPin, Video } from 'lucide-react';
 import { hideInstancePatch, hideSenderPatch, hideSeriesPatch, senderOf } from '@/core/filters/hideActions';
 import type { CalendarEvent } from '@/core/models';
-import { durationMinutes, eventEnd, eventStart } from '@/core/time/eventTime';
-import { dayOffset, formatTimeIn, inWorkingHours, systemZone, zoneAbbr, zoneLabel } from '@/core/time/zones';
+import { daySpill, durationMinutes, eventEnd, eventStart } from '@/core/time/eventTime';
+import { dayKeyIn, dayOffset, formatDayIn, formatTimeIn, inWorkingHours, zoneAbbr, zoneLabel } from '@/core/time/zones';
 import { usePrefs } from '@/app/hooks/usePrefs';
-import { useZones } from '@/app/hooks/useZones';
+import { useHomeZone } from '@/app/hooks/useHomeZone';
+import { useCompareZones } from '@/app/hooks/useZones';
 import { cn } from '@/app/lib/cn';
 import { formatDuration, formatTime } from '@/app/lib/format';
 import { needsReply } from '@/core/planning/nextEvent';
@@ -16,19 +17,29 @@ import { ResponseBadge } from './ResponseBadge';
 interface Props {
   event: CalendarEvent;
   now: Date;
+  /** The day this row is listed under. Lets the row say when the event started on, or runs into, another day. */
+  day?: Date;
   /** When set, the expanded row offers a button that moves the time zone slider to this event. */
   onCompare?: (event: CalendarEvent) => void;
   /** Edit, cancel and RSVP controls. Off in the popup, which can't host Google's reconnect window. */
   showActions?: boolean;
 }
 
-export function EventRow({ event, now, onCompare, showActions = true }: Props) {
+export function EventRow({ event, now, day, onCompare, showActions = true }: Props) {
   const [open, setOpen] = useState(false);
   const { prefs, setPrefs } = usePrefs();
-  const zones = useZones().filter((z) => z !== systemZone());
+  const home = useHomeZone();
+  const zones = useCompareZones();
   const showZones = zones.length > 0 && !event.isAllDay;
   const start = eventStart(event);
   const end = eventEnd(event);
+  const spill = day ? daySpill(event, day, home) : { fromEarlier: false, intoLater: false };
+  // An event that crosses midnight is listed under both days, so say which side of midnight this row is.
+  const spillNote = spill.fromEarlier
+    ? `Started ${formatDayIn(start, home)}, ${formatTime(start, home)}`
+    : spill.intoLater
+      ? `Ends ${formatDayIn(end, home)}, ${formatTime(end, home)}`
+      : null;
   const isPast = end <= now;
   const isNow = start <= now && now < end;
   const declined = event.selfResponse === 'declined';
@@ -50,7 +61,7 @@ export function EventRow({ event, now, onCompare, showActions = true }: Props) {
         )}
       >
         <div className={cn('w-[60px] whitespace-nowrap shrink-0 pt-px text-xs tabular-nums', isPast ? 'text-subtle' : 'text-muted')}>
-          <div className="font-medium">{formatTime(start)}</div>
+          <div className="font-medium">{formatTime(start, home)}</div>
           <div className="text-subtle">{formatDuration(durationMinutes(event))}</div>
         </div>
         <span
@@ -63,6 +74,16 @@ export function EventRow({ event, now, onCompare, showActions = true }: Props) {
             {event.title}
           </div>
           <div className="flex items-center gap-2 truncate text-xs text-subtle">
+            {spillNote && (
+              <span
+                className="shrink-0 rounded border border-warning/40 bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning"
+                title={spill.fromEarlier ? 'This meeting began on the previous day and carries over past midnight' : 'This meeting carries over past midnight into the next day'}
+              >
+                {spill.fromEarlier ? '← ' : ''}
+                {spillNote}
+                {spill.intoLater ? ' →' : ''}
+              </span>
+            )}
             <span className="truncate">{event.calendarName}</span>
             {event.meetingLink && <Video className="size-3 shrink-0" aria-label="Has video link" />}
             {event.location && <MapPin className="size-3 shrink-0" aria-label="Has location" />}
@@ -78,7 +99,8 @@ export function EventRow({ event, now, onCompare, showActions = true }: Props) {
       {open && (
         <div className="space-y-2 pb-2 pl-[calc(60px+12px+3px+12px+8px)] pr-2 text-xs text-muted">
           <div className="text-subtle">
-            {formatTime(start)} – {formatTime(end)}
+            {formatDayIn(start, home)}, {formatTime(start, home)} – {dayKeyIn(start, home) === dayKeyIn(end, home) ? '' : `${formatDayIn(end, home)}, `}
+            {formatTime(end, home)}
           </div>
           {event.location && (
             <div className="flex items-start gap-1.5">
@@ -98,7 +120,7 @@ export function EventRow({ event, now, onCompare, showActions = true }: Props) {
               {zones.map((z) => {
                 const ok =
                   inWorkingHours(start, z, prefs.workingHours) && inWorkingHours(addMinutes(end, -1), z, prefs.workingHours);
-                const offset = dayOffset(start, z);
+                const offset = dayOffset(start, z, home);
                 return (
                   <li key={z} className="flex items-baseline justify-between gap-2 tabular-nums">
                     <span className="truncate">

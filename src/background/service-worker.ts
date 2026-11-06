@@ -6,6 +6,7 @@ import { idbEventCache } from '../core/storage/eventCache';
 import { syncAll } from '../core/sync/syncService';
 import { syncStore } from '../core/sync/syncStatus';
 import { eventStart } from '../core/time/eventTime';
+import { resolveZone } from '../core/time/zones';
 import { reminderStatusStore } from '../core/notify/reminderStatus';
 import { applyFilters } from '../core/filters/filterEngine';
 import {
@@ -93,7 +94,7 @@ async function checkReminders(): Promise<void> {
     let shown = 0;
     let failure: string | null = null;
     for (const e of due) {
-      const { title, message } = reminderText(e, now);
+      const { title, message } = reminderText(e, now, resolveZone(prefs.homeTimezone));
       try {
         await chrome.notifications.create(notificationId(e), {
           type: 'basic',
@@ -172,6 +173,57 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   if ((msg as { type?: string } | null)?.type !== SYNC_MESSAGE) return false;
   void sync().then(checkReminders).then(() => sendResponse({ ok: true }));
   return true; // async response
+});
+
+// Which windows have the side panel open. Each open panel keeps a port to this worker (see entries/sidepanel/presence.ts),
+// so this is rebuilt by the panels themselves if the worker restarts.
+const panelPorts = new Map<number, chrome.runtime.Port>();
+
+/** Tells the edge tab in every page of the window whether the panel is open, so it can flip its arrow. */
+async function announcePanel(windowId: number, open: boolean) {
+  const tabs = await chrome.tabs.query({ windowId }).catch(() => []);
+  for (const tab of tabs) {
+    if (tab.id !== undefined) chrome.tabs.sendMessage(tab.id, { type: 'dayflow:panel-state', open }).catch(() => undefined);
+  }
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'dayflow-panel') return;
+  let windowId: number | undefined;
+  port.onMessage.addListener((msg: unknown) => {
+    const m = msg as { type?: string; windowId?: unknown } | null;
+    if (m?.type !== 'hello' || typeof m.windowId !== 'number') return;
+    windowId = m.windowId;
+    panelPorts.set(windowId, port);
+    void announcePanel(windowId, true);
+  });
+  port.onDisconnect.addListener(() => {
+    if (windowId === undefined || panelPorts.get(windowId) !== port) return;
+    panelPorts.delete(windowId);
+    void announcePanel(windowId, false);
+  });
+});
+
+// The edge tab on web pages opens or closes the side panel. open() must run straight from this user-gesture message,
+// so nothing is awaited before it.
+chrome.runtime.onMessage.addListener((msg: unknown, sender, sendResponse) => {
+  const type = (msg as { type?: string } | null)?.type;
+  const windowId = sender.tab?.windowId;
+  if (type === 'dayflow:panel-state-query') {
+    sendResponse({ open: windowId !== undefined && panelPorts.has(windowId) });
+    return false;
+  }
+  if (type !== 'dayflow:toggle-panel' || windowId === undefined) return false;
+  const panel = panelPorts.get(windowId);
+  if (!panel) {
+    chrome.sidePanel.open({ windowId }).catch(() => undefined);
+  } else {
+    // Newer Chrome can close the panel directly; older versions ask the panel to close itself.
+    const close = (chrome.sidePanel as { close?: (o: { windowId: number }) => Promise<void> }).close;
+    if (close) close.call(chrome.sidePanel, { windowId }).catch(() => panel.postMessage({ type: 'close' }));
+    else panel.postMessage({ type: 'close' });
+  }
+  return false;
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {

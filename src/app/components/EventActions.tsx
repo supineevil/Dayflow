@@ -1,4 +1,3 @@
-import { format } from 'date-fns';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { deleteEvent, getEventDetails, patchEvent } from '@/core/google/calendarApi';
@@ -19,7 +18,8 @@ import type { CalendarEvent, ResponseStatus } from '@/core/models';
 import { dropFromCache } from '@/core/sync/localEdits';
 import { requestSync } from '@/core/sync/requestSync';
 import { eventEnd, eventStart } from '@/core/time/eventTime';
-import { systemZone, zonedTimeToDate } from '@/core/time/zones';
+import { dayKeyIn, minutesInZone, hhmm, systemZone, zonedTimeToDate } from '@/core/time/zones';
+import { useHomeZone } from '@/app/hooks/useHomeZone';
 import { useAccount } from '@/app/hooks/useAccount';
 import { cn } from '@/app/lib/cn';
 import { Button } from './ui/Button';
@@ -232,14 +232,16 @@ function CancelPanel({ event, busy, onClose, run }: { event: CalendarEvent; busy
 }
 
 function EditForm({ event, busy, onClose, run }: { event: CalendarEvent; busy: boolean; onClose: () => void; run: Run }) {
-  const mine = systemZone();
+  // The form shows and reads times in the home zone; Google stores them in the calendar's (this computer's) zone.
+  const home = useHomeZone();
+  const calendarZone = systemZone();
   const start0 = eventStart(event);
   const minutes0 = Math.round((eventEnd(event).getTime() - start0.getTime()) / 60_000);
   const { state, error } = useGuests(event, true);
 
   const [title, setTitle] = useState(event.title);
-  const [date, setDate] = useState(format(start0, 'yyyy-MM-dd'));
-  const [time, setTime] = useState(format(start0, 'HH:mm'));
+  const [date, setDate] = useState(dayKeyIn(start0, home));
+  const [time, setTime] = useState(hhmm(minutesInZone(start0, home)));
   const [duration, setDuration] = useState(minutes0);
   const [addText, setAddText] = useState('');
   const [removed, setRemoved] = useState<string[]>([]);
@@ -247,7 +249,7 @@ function EditForm({ event, busy, onClose, run }: { event: CalendarEvent; busy: b
 
   const { valid: toAdd, invalid } = useMemo(() => parseEmails(addText), [addText]);
   const guests = (state?.attendees ?? []).filter(isGuest);
-  const start = date && time ? zonedTimeToDate(date, time, mine) : null;
+  const start = date && time ? zonedTimeToDate(date, time, home) : null;
   const durations = DURATIONS.includes(duration) ? DURATIONS : [...DURATIONS, duration].sort((a, b) => a - b);
   const guestsChanged = toAdd.length > 0 || removed.length > 0;
   // Never write the guest list back if Google trimmed it, or we could not read it.
@@ -258,7 +260,7 @@ function EditForm({ event, busy, onClose, run }: { event: CalendarEvent; busy: b
         title,
         start,
         durationMinutes: duration,
-        timeZone: mine,
+        timeZone: calendarZone,
         attendees: guestsChanged && state ? changeAttendees(state.attendees, toAdd, removed) : undefined,
       })
     : {};

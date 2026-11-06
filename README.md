@@ -24,6 +24,9 @@ Dayflow is **local-first**. Your tasks, bookmarks and settings are stored only i
 - Only meetings you accepted trigger one (events you organise yourself count too; an event with no reply from you that someone else owns does not). Maybe, unanswered and declined invites, cancelled events, all-day events and anything you've hidden never do. You can change the lead time (1 to 30 minutes) or turn reminders off in Settings → Meeting reminders.
 - Checked about once a minute from the local cache, so no extra Google access is needed. Your operating system's "Do not disturb" and Chrome's notification settings still apply.
 
+**Meetings that cross midnight**
+- A meeting that starts one day and ends after midnight is listed on both days. An amber tag on each row says which side you are looking at: "← Started Thu 5 Nov, 11:00 pm" on the second day, and "Ends Fri 6 Nov, 12:15 am →" on the first.
+
 **Hide the noise**
 - Hide a single event, a whole recurring series, or everything from a sender (an email or `@domain`).
 - Rules by title, organizer, calendar, declined events, or past events. Hidden items can be restored from Settings.
@@ -43,9 +46,13 @@ Click the toolbar icon for a small window with two parts, switched at the top:
 - **Day**: your next event (never one you declined, with unanswered invites in yellow), then the rest of today. Use the arrows to check any other day, and **Today** to come back. It has a refresh button and a button to open the side panel.
 - **Links**: your bookmarks, grouped and colour-coded as in the side panel. Search, fold sections, and click to open. Adding and editing stay in the side panel.
 
+**Edge tab**
+- A slim purple handle peeks from the right edge of every web page. Hover to pull it out, click to open the side panel directly, without going through the toolbar window. While the panel is open the arrow flips to point right, and clicking it closes the panel. Turn it off in Settings → Edge tab.
+
 **Make it yours**
 - Drag the top-bar tabs (Today, Agenda, Meet, Links, Settings) to reorder them, or use Settings → Tab order. The bar scrolls sideways when it is narrow.
 - Light, dark or system theme; working hours; week start; extra time zones.
+- **My time zone** (Settings → Time zones): the zone your day runs in. If your Google Calendar is in one zone (say IST) but you work in another (say US Eastern), pick it here and "today", the timeline, the day stepper, working hours, the greeting, reminders and the planner all follow it, so a whole working day stays on one page. Changing it also converts your working hours to the same moments in the new zone. Your Google Calendar itself is not changed, and events keep their real times. Leave it on "This computer" for the old behaviour.
 - The header greeting follows your working hours, not the system clock.
 - The same app is also available as a full-page options screen.
 
@@ -87,7 +94,7 @@ If you run the app in **Testing** mode (the right choice for personal use), Goog
 | `calendar.events.readonly` | Read events |
 | `calendar.events.owned` | Create, edit, cancel or answer an event, **only when you press the matching button** |
 
-Chrome permissions: `storage` (save settings locally), `sidePanel`, `identity` (Google sign-in), `alarms` (periodic refresh and the reminder check), `notifications` (meeting reminders).
+Chrome permissions: `storage` (save settings locally), `sidePanel`, `identity` (Google sign-in), `alarms` (periodic refresh and the reminder check), `notifications` (meeting reminders). The edge tab is a content script that runs on all websites, so Chrome shows "Read and change all your data on all websites" when you install or reload. The script only draws the handle and sends one message to open the side panel; it never reads page content, and it does not run on `chrome://` pages or the Chrome Web Store. Switch it off in Settings → Edge tab (the permission warning stays until the extension is rebuilt without it).
 
 Sign-in uses the OAuth implicit flow, so there are no refresh tokens: the token lasts about an hour and Dayflow renews it silently when Google allows it, otherwise it shows **Reconnect**. Disconnecting revokes the token and clears the cached calendar data. Tasks, bookmarks and settings are kept.
 

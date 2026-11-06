@@ -1,6 +1,6 @@
-import { format } from 'date-fns';
 import type { CalendarEvent } from '../models';
 import { eventStart } from '../time/eventTime';
+import { formatTimeIn } from '../time/zones';
 
 export const DEFAULT_REMINDER_LEAD = 5;
 export const REMINDER_LEAD_OPTIONS = [1, 2, 5, 10, 15, 30] as const;
@@ -58,10 +58,10 @@ export function markNotified(notified: NotifiedMap, events: CalendarEvent[]): No
   return next;
 }
 
-export function reminderText(e: CalendarEvent, now: Date): { title: string; message: string } {
+export function reminderText(e: CalendarEvent, now: Date, zone: string): { title: string; message: string } {
   const start = eventStart(e);
   const minutes = Math.max(1, Math.ceil((start.getTime() - now.getTime()) / 60_000));
-  const when = `Starts in ${minutes} min (${format(start, 'p')})`;
+  const when = `Starts in ${minutes} min (${formatTimeIn(start, zone)})`;
   return { title: e.title || '(No title)', message: e.location ? `${when} · ${e.location}` : when };
 }
 
