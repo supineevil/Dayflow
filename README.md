@@ -72,9 +72,23 @@ Then in Chrome:
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and choose the `dist/` folder.
-3. Click the Dayflow toolbar icon, then **Open side panel**.
+3. Open the side panel: click the purple edge tab on the right side of any web page, or click the Dayflow toolbar icon and then **Open side panel**.
 
 After changing code, run `npm run build` and press the reload icon on the extension's card.
+
+### Installing from a shared `dist` folder
+
+If someone gave you a ready-made copy (a zip of the `dist` folder), you don't need Node, the source code or a build step:
+
+1. Unzip it and keep the folder somewhere permanent. Chrome reads it from there every time it starts, so don't delete or move it.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Click **Load unpacked** and choose the unzipped folder (the one that contains `manifest.json`).
+4. Ask the person who shared it to add your Google email as a **test user** in their Google Cloud project, otherwise sign-in is refused (see [Connect Google Calendar](#connect-google-calendar)).
+5. Open the side panel from the edge tab or the toolbar icon, and connect Google.
+
+A copy installed this way does not update itself. When you get a new `dist` folder, replace the old one and press the reload icon on the extension's card. Your tasks, bookmarks and settings are stored in Chrome and are kept.
+
+To make a shareable copy yourself, run `npm run build` and zip the `dist/` folder. Never include `.keys` or `.env.local`.
 
 ## Connect Google Calendar
 
