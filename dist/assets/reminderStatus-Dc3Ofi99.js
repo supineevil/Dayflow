@@ -1,1 +1,0 @@
-import{L as e}from"./calendarApi-CwfpgX4d.js";var t=e(`dayflow:reminder-status`,{lastCheckedAt:null,considered:0,next:null,lastShownAt:null,lastError:null});export{t};
