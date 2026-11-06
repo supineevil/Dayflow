@@ -1,0 +1,1 @@
+import{Dt as e,Et as t,Y as n}from"./styles-ByTMt8f4.js";import{t as r}from"./AppShell-BbYV6YPd.js";var i=e(),a=t(),o=n();(0,a.createRoot)(document.getElementById(`root`)).render((0,o.jsx)(i.StrictMode,{children:(0,o.jsx)(r,{wide:!0})}));
